@@ -9,15 +9,29 @@ from typing import Tuple
 @njit(fastmath=True, cache=True)
 def _ray_aabb_intersect(o: np.ndarray, d: np.ndarray,
                         bmin: np.ndarray, bmax: np.ndarray) -> Tuple[float, float]:
-    t0, t1 = -np.inf, np.inf
+    """
+    Robust slab test returning (t_near, t_far) or (inf, -inf) on miss.
+    Handles d==0 by verifying origin inside slab, avoids NaN.
+    """
+    t0 = -math.inf
+    t1 = math.inf
     for k in range(3):
-        inv = 1.0 / d[k] if d[k] != 0.0 else math.inf
-        tn = (bmin[k] - o[k]) * inv
-        tf = (bmax[k] - o[k]) * inv
-        if tn > tf:
-            tn, tf = tf, tn
-        t0 = tn if tn > t0 else t0
-        t1 = tf if tf < t1 else t1
+        if d[k] == 0.0:
+            # axis-parallel: require origin inside slab
+            if o[k] < bmin[k] or o[k] > bmax[k]:
+                return math.inf, -math.inf
+            tn = -math.inf
+            tf = math.inf
+        else:
+            inv = 1.0 / d[k]
+            tn = (bmin[k] - o[k]) * inv
+            tf = (bmax[k] - o[k]) * inv
+            if tn > tf:
+                tn, tf = tf, tn
+        if tn > t0:
+            t0 = tn
+        if tf < t1:
+            t1 = tf
         if t0 > t1:
             return math.inf, -math.inf
     return t0, t1
@@ -33,12 +47,15 @@ def _dda(o: np.ndarray, d: np.ndarray,
          out_ix: np.ndarray,
          out_t0: np.ndarray,
          out_t1: np.ndarray) -> int:
-    # optional AABB test
+    """
+    Fast 3D DDA stepping. Returns number of hits and fills out_ix, out_t0, out_t1.
+    """
+    # 1) Optional AABB intersect
     if do_intersect:
         bmin = grid_origin
         bmax = grid_origin + voxel_size * np.array(grid_shape, dtype=np.float64)
         t_ent, t_ext = _ray_aabb_intersect(o, d, bmin, bmax)
-        if t_ent > t_ext or t_ext < 0.0:
+        if t_ext < 0.0 or t_ent > t_ext:
             return 0
         t0 = t_ent if t_ent > 0.0 else 0.0
         t_exit = t_ext
@@ -46,7 +63,7 @@ def _dda(o: np.ndarray, d: np.ndarray,
         t0 = start_t
         t_exit = math.inf
 
-    # initial voxel index
+    # 2) Initial voxel index
     p = o + d * t0
     ix = np.empty(3, dtype=int64)
     for k in range(3):
@@ -58,7 +75,7 @@ def _dda(o: np.ndarray, d: np.ndarray,
             idx = grid_shape[k] - 1
         ix[k] = idx
 
-    # per-axis stepping info
+    # 3) Setup per-axis stepping
     step = np.empty(3, dtype=int64)
     tnext = np.empty(3, dtype=float64)
     dt = np.empty(3, dtype=float64)
@@ -78,23 +95,29 @@ def _dda(o: np.ndarray, d: np.ndarray,
             tnext[k] = math.inf
             dt[k] = math.inf
 
-    # 3D-DDA walk
+    # 4) March the grid
     count = 0
-    while count < out_ix.shape[0]:
+    max_hits = out_ix.shape[0]
+    while count < max_hits:
         out_ix[count, 0] = ix[0]
         out_ix[count, 1] = ix[1]
         out_ix[count, 2] = ix[2]
         out_t0[count] = t0
-        # find next crossing
+
+        # find next boundary crossing
         tmin = tnext[0]
-        if tnext[1] < tmin: tmin = tnext[1]
-        if tnext[2] < tmin: tmin = tnext[2]
+        if tnext[1] < tmin:
+            tmin = tnext[1]
+        if tnext[2] < tmin:
+            tmin = tnext[2]
         out_t1[count] = tmin
+
         count += 1
         t0 = tmin
         if t0 > t_exit or t0 > t_max:
             break
-        # step all axes that match tmin
+
+        # step axes that hit simultaneously
         for k in range(3):
             if tnext[k] == tmin:
                 ix[k] += step[k]
