@@ -33,7 +33,7 @@ pip install fast_voxel_traversal
 Or clone and install the latest development version:
 
 ```bash
-git clone https://github.com/your-username/Fast-Voxel-Traversal-Python.git
+git clone https://github.com/Noah-Everett/Fast-Voxel-Traversal-Python.git
 cd Fast-Voxel-Traversal-Python
 pip install -e .[dev]
 ```
