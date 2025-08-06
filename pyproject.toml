@@ -1,0 +1,18 @@
+[build-system]
+requires      = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name        = "fast_voxel_traversal"
+version     = "0.1.0"
+description = "Blazing‑fast Amanatides–Woo voxel traversal in pure Python + Numba"
+authors     = [{name = "Your Name"}]
+readme      = "README.md"
+requires-python = ">=3.9"
+dependencies = ["numpy>=1.23", "numba>=0.59"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.setuptools.packages.find]
+where = ["fast_voxel_traversal"]
