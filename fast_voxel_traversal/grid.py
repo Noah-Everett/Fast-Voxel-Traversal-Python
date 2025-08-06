@@ -124,51 +124,40 @@ class Grid:
         edgecolor: str = 'k',
         show: bool = True,
     ) -> Axes3D:
-        """Plot occupied voxels in 3D using matplotlib.
-
-        Parameters
-        ----------
-        grid_array : np.ndarray
-            3D boolean or numerical array where non-zero entries are occupied.
-        ax : mpl_toolkits.mplot3d.Axes3D, optional
-            Axes to plot on. If None, a new figure and 3D axes are created.
-        cmap : str, optional
-            Matplotlib colormap for the voxels.
-        edgecolor : str, optional
-            Edge color for the voxels.
-        show : bool, optional
-            If True, display the plot immediately.
-
-        Returns
-        -------
-        ax : mpl_toolkits.mplot3d.Axes3D
-            The axes containing the plot.
-        """
-        # Ensure boolean mask
+        """Plot occupied voxels in 3D using matplotlib, respecting grid origin and size."""
         mask = grid_array.astype(bool)
+        nx, ny, nz = self.shape
+
+        # Compute corner coordinates
+        xs = self.origin[0] + np.arange(nx + 1) * self.voxel_size[0]
+        ys = self.origin[1] + np.arange(ny + 1) * self.voxel_size[1]
+        zs = self.origin[2] + np.arange(nz + 1) * self.voxel_size[2]
+        # Create coordinate grids for voxel corners
+        xv, yv, zv = np.meshgrid(xs, ys, zs, indexing='ij')
 
         if ax is None:
             fig = plt.figure()
             ax = fig.add_subplot(111, projection='3d')
 
-        # Use matplotlib's voxel plotting
-        ax.voxels(
-            mask,
-            facecolors=plt.get_cmap(cmap)(mask.astype(float)),
-            edgecolor=edgecolor,
-        )
+        # Determine facecolors for occupied voxels
+        facecolors = plt.get_cmap(cmap)(mask.astype(float))
+        # Plot voxels with explicit coordinates
+        ax.voxels(xv, yv, zv, mask, facecolors=facecolors, edgecolor=edgecolor)
 
-        # Set axis labels and limits
+        # Label axes
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
-        ax.set_xlim(0, self.shape[0])
-        ax.set_ylim(0, self.shape[1])
-        ax.set_zlim(0, self.shape[2])
+        # Set limits to grid bounds
+        ax.set_xlim(self.origin[0], self.origin[0] + nx * self.voxel_size[0])
+        ax.set_ylim(self.origin[1], self.origin[1] + ny * self.voxel_size[1])
+        ax.set_zlim(self.origin[2], self.origin[2] + nz * self.voxel_size[2])
 
         if show:
             plt.show()
         return ax
+
+
 
 
 # -------------------------------------------------------------------------
