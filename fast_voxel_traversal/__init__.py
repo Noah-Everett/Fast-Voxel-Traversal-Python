@@ -1,3 +1,4 @@
-from .traversal import traverse_ray, traverse_until_hit
+from .grid import Grid, traverse_ray, traverse_until_hit
+from .ray import Ray
 
-__all__ = ["traverse_ray", "traverse_until_hit"]
+__all__ = ["Grid", "Ray", "traverse_ray", "traverse_until_hit"]
