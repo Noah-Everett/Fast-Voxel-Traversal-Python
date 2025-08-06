@@ -5,6 +5,9 @@ import math
 from typing import Iterable, Optional, Sequence, Tuple, Generator, Union
 
 import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+
 from ._core import _ray_aabb_intersect, _dda
 
 
@@ -110,11 +113,67 @@ class Grid:
                 return ix, iy, iz, t0
         return None
 
+    # ---------------------------------------------------------------------
+    # Visualization
+    # ---------------------------------------------------------------------
+    def plot(
+        self,
+        grid_array: np.ndarray,
+        ax: Optional[Axes3D] = None,
+        cmap: str = 'viridis',
+        edgecolor: str = 'k',
+        show: bool = True,
+    ) -> Axes3D:
+        """Plot occupied voxels in 3D using matplotlib.
+
+        Parameters
+        ----------
+        grid_array : np.ndarray
+            3D boolean or numerical array where non-zero entries are occupied.
+        ax : mpl_toolkits.mplot3d.Axes3D, optional
+            Axes to plot on. If None, a new figure and 3D axes are created.
+        cmap : str, optional
+            Matplotlib colormap for the voxels.
+        edgecolor : str, optional
+            Edge color for the voxels.
+        show : bool, optional
+            If True, display the plot immediately.
+
+        Returns
+        -------
+        ax : mpl_toolkits.mplot3d.Axes3D
+            The axes containing the plot.
+        """
+        # Ensure boolean mask
+        mask = grid_array.astype(bool)
+
+        if ax is None:
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+
+        # Use matplotlib's voxel plotting
+        ax.voxels(
+            mask,
+            facecolors=plt.get_cmap(cmap)(mask.astype(float)),
+            edgecolor=edgecolor,
+        )
+
+        # Set axis labels and limits
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        ax.set_xlim(0, self.shape[0])
+        ax.set_ylim(0, self.shape[1])
+        ax.set_zlim(0, self.shape[2])
+
+        if show:
+            plt.show()
+        return ax
+
 
 # -------------------------------------------------------------------------
 # Convenience top‑level helpers
 # -------------------------------------------------------------------------
-
 def _infer_shape_from_array(arr: np.ndarray) -> Tuple[int, int, int]:
     if arr.ndim != 3:
         raise ValueError("grid_array must be 3‑D")
