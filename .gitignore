@@ -1,3 +1,4 @@
 **/.DS_Store
-Fast_Voxel_traversal_Python/fast_voxel_traversal.egg-info
+**.egg-info
+build/
 .pytest_cache/

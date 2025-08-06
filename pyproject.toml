@@ -15,4 +15,5 @@ dependencies = ["numpy>=1.23", "numba>=0.59"]
 dev = ["pytest>=8.0"]
 
 [tool.setuptools.packages.find]
-where = ["Fast_Voxel_Traversal_Python"]
+where  = ["."]
+include = ["fast_voxel_traversal*"]
