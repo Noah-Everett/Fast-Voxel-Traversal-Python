@@ -2,9 +2,6 @@
 
 A blazing-fast, pure-Python implementation of the Amanatides–Woo voxel traversal algorithm, accelerated with [Numba](https://numba.pydata.org/). Ideal for ray-marching, volume rendering, collision detection, and any application that needs to walk through a 3D voxel grid in $O(n_x + n_y + n_z)$ time per ray.
 
-![PyPI Version](https://img.shields.io/pypi/v/fast_voxel_traversal)
-![Python Versions](https://img.shields.io/pypi/pyversions/fast_voxel_traversal)
-![License](https://img.shields.io/pypi/l/fast_voxel_traversal)
 
 ---
 
@@ -23,22 +20,18 @@ A blazing-fast, pure-Python implementation of the Amanatides–Woo voxel travers
 
 ---
 
-## Installation
+## Setup
 
-```bash
-# Stable release on PyPI
-pip install fast_voxel_traversal
-```
-
-Or clone and install the latest development version:
+Clone this repository and install dependencies:
 
 ```bash
 git clone https://github.com/Noah-Everett/Fast-Voxel-Traversal-Python.git
 cd Fast-Voxel-Traversal-Python
-pip install -e .[dev]
+# Install required packages
+pip install numpy numba
 ```
 
-Requires Python 3.9+ and NumPy 1.23+, Numba 0.59+.
+Dependencies: Python 3.9+, NumPy >=1.23, Numba >=0.59.
 
 ---
 
@@ -57,9 +50,11 @@ grid_origin = (0.0, 0.0, 0.0)
 origin    = (-0.5, 0.2,  0.1)
 direction = ( 1.0, 0.3,  0.1)
 
+```python
 # 1) Iterate through every voxel crossed by the ray
 for ix, iy, iz, t_enter, t_exit in traverse_ray(
-        origin, direction, grid_shape,
+        origin, direction,
+        grid_shape=grid_shape,
         voxel_size=voxel_size,
         grid_origin=grid_origin,
         t_max=100.0
@@ -88,7 +83,7 @@ else:
 
 ## API Reference
 
-### `traverse_ray(origin, direction, grid_shape, *, voxel_size=1.0, grid_origin=(0,0,0), t_max=∞)`
+### `traverse_ray(origin, direction, *, grid_shape=None, voxel_size=1.0, grid_origin=(0,0,0), bounds=None, shape=None, start_t=None, t_max=∞)`
 
 **Returns:** generator
 
@@ -104,13 +99,59 @@ Yields tuples: `(ix, iy, iz, t_enter, t_exit)`
 
 ---
 
-### `traverse_until_hit(origin, direction, grid, *, voxel_size=1.0, grid_origin=(0,0,0), t_max=∞)`
+### `traverse_until_hit(origin, direction, grid_array, *, voxel_size=1.0, grid_origin=(0,0,0), bounds=None, shape=None, start_t=None, t_max=∞)`
 
 **Returns:** `(ix, iy, iz, t_hit)` or `None`
 
 Scans a 3D boolean/bitmask grid and returns the first non-zero voxel 'hit'. Returns None if no occupied cell is found within t_max.
 
----
+
+## Class `Grid`
+
+### Constructor
+```python
+Grid(*, grid_shape=None, voxel_size=1.0, grid_origin=(0,0,0), bounds=None, shape=None)
+```
+Create a 3D axis-aligned voxel grid.
+
+Parameters:
+- `grid_shape`: tuple(int, int, int), number of voxels along each axis (legacy mode).
+- `voxel_size`: float or tuple(float, float, float), physical size of each voxel.
+- `grid_origin`: tuple(float, float, float), world-space coordinate of voxel (0,0,0).
+- `bounds`: (min_pt, max_pt), world-space bounding box of the grid.
+- `shape`: tuple(int, int, int), number of voxels when `bounds` is specified.
+
+### Methods
+- `entry_time(origin, direction) -> float`
+  Compute parametric entry `t` where the ray first intersects the grid AABB, or +∞ if it misses.
+  - `origin`: 3-tuple or array of floats.
+  - `direction`: 3-tuple or array of floats.
+- `traverse(origin, direction, *, start_t=None, t_max=∞) -> generator`
+  Iterate over all voxels crossed by the ray.
+  Yields `(ix, iy, iz, t_enter, t_exit)` for each voxel.
+- `traverse_until_hit(origin, direction, grid_array, *, start_t=None, t_max=∞) -> Optional[tuple]`
+  Return first occupied voxel in `grid_array`, or `None` if none before `t_max`.
+  - `grid_array`: 3D boolean or integer numpy array serving as occupancy mask.
+
+## Class `Ray`
+
+### Constructor
+```python
+Ray(origin, direction)
+```
+Encapsulate ray parameters.
+
+Parameters:
+- `origin`: 3-tuple of floats.
+- `direction`: 3-tuple of floats.
+
+### Methods
+- `entry_time(grid: Grid) -> float`
+  Return `t` where this ray first intersects the grid AABB, or +∞ if it misses.
+- `traverse(grid: Grid, *, start_t=None, t_max=∞) -> generator`
+  Delegate to `grid.traverse`, yields `(ix, iy, iz, t_enter, t_exit)`.
+- `traverse_until_hit(grid: Grid, grid_array, *, start_t=None, t_max=∞) -> Optional[tuple]`
+  Delegate to `grid.traverse_until_hit`, returns first hit or `None`.
 
 ## Testing
 
