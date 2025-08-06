@@ -115,3 +115,15 @@ def test_top_level_helpers_equivalent():
                                 grid_shape=(5, 5, 5)))
     # Should be marching along Y at x=0,z=0
     assert [v[:3] for v in voxels1] == [(0, j, 0) for j in range(5)]
+
+def test_legacy_and_bounds_grid_equivalence():
+    # Create a grid with legacy constructor
+    g1 = Grid(grid_shape=(3, 3, 3), voxel_size=1.0, grid_origin=(0.0, 0.0, 0.0))
+    # Create a grid with bounds and shape
+    bounds = ((0.0, 0.0, 0.0), (3.0, 3.0, 3.0))
+    shape = (3, 3, 3)
+    g2 = Grid(bounds=bounds, shape=shape)
+
+    assert g1.shape == g2.shape
+    assert np.allclose(g1.voxel_size, g2.voxel_size)
+    assert np.allclose(g1.origin, g2.origin)
