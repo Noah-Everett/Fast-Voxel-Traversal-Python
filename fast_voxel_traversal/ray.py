@@ -31,3 +31,19 @@ class Ray:
     ):
         """Delegate to Grid.traverse_until_hit."""
         return grid.traverse_until_hit(self.origin, self.direction, grid_array, start_t=start_t, t_max=t_max)
+
+    def time_grid(
+        self,
+        grid: Grid,
+        use_time: bool = True,
+        start_t: Optional[float] = None,
+        t_max: float = float('inf')
+    ):
+        """Delegate to Grid.time_grid: rasterize ray into entry-time grid or binary mask."""
+        return grid.time_grid(
+            self.origin,
+            self.direction,
+            use_time=use_time,
+            start_t=start_t,
+            t_max=t_max
+        )

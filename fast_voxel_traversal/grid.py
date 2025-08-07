@@ -113,6 +113,28 @@ class Grid:
                 return ix, iy, iz, t0
         return None
 
+    def time_grid(self,
+                  origin: Iterable[float],
+                  direction: Iterable[float],
+                  *,
+                  use_time: bool = True,
+                  start_t: Optional[float] = None,
+                  t_max: float = math.inf) -> np.ndarray:
+        """
+        Rasterize ray traversal into a 3D array of entry times or ones.
+
+        Parameters:
+        - origin, direction: ray parameters
+        - use_time: if True fill with entry times; if False fill with 1.0
+        - start_t, t_max: traversal parameters
+
+        Returns a numpy array shaped like the grid, with NaN for missed voxels.
+        """
+        times = np.full(self.shape, np.nan, dtype=float)
+        for ix, iy, iz, t_enter, _ in self.traverse(origin, direction, start_t=start_t, t_max=t_max):
+            times[ix, iy, iz] = t_enter if use_time else 1.0
+        return times
+
     # ---------------------------------------------------------------------
     # Visualization
     # ---------------------------------------------------------------------
@@ -122,6 +144,7 @@ class Grid:
         ax: Optional[Axes3D] = None,
         cmap: str = 'viridis',
         edgecolor: str = 'k',
+        set_limits: bool = True,
         show: bool = True,
     ) -> Axes3D:
         """Plot occupied voxels in 3D using matplotlib, respecting grid origin and size."""
@@ -140,18 +163,15 @@ class Grid:
             ax = fig.add_subplot(111, projection='3d')
 
         # Determine facecolors for occupied voxels
-        facecolors = plt.get_cmap(cmap)(mask.astype(float))
+        facecolors = plt.get_cmap(cmap)(grid_array.astype(float))
         # Plot voxels with explicit coordinates
         ax.voxels(xv, yv, zv, mask, facecolors=facecolors, edgecolor=edgecolor)
 
-        # Label axes
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
         # Set limits to grid bounds
-        ax.set_xlim(self.origin[0], self.origin[0] + nx * self.voxel_size[0])
-        ax.set_ylim(self.origin[1], self.origin[1] + ny * self.voxel_size[1])
-        ax.set_zlim(self.origin[2], self.origin[2] + nz * self.voxel_size[2])
+        if set_limits:
+            ax.set_xlim(self.origin[0], self.origin[0] + nx * self.voxel_size[0])
+            ax.set_ylim(self.origin[1], self.origin[1] + ny * self.voxel_size[1])
+            ax.set_zlim(self.origin[2], self.origin[2] + nz * self.voxel_size[2])
 
         if show:
             plt.show()
@@ -219,3 +239,36 @@ def traverse_until_hit(
     return grid.traverse_until_hit(
         origin, direction, grid_array, start_t=start_t, t_max=t_max
     )
+
+
+def time_grid(
+    origin,
+    direction,
+    grid_array=None,
+    *,
+    grid_shape=None,
+    voxel_size=1.0,
+    grid_origin=(0.0, 0.0, 0.0),
+    bounds=None,
+    shape=None,
+    use_time: bool = True,
+    start_t=None,
+    t_max=math.inf
+) -> np.ndarray:
+    """
+    Rasterize ray traversal into a 3D array of entry times or ones.
+
+    If grid_array is provided, its shape infers grid dimensions; otherwise specify grid_shape or bounds+shape.
+    """
+    # Determine grid shape
+    if grid_array is not None and bounds is None and shape is None:
+        grid_shape = _infer_shape_from_array(grid_array)
+    # Build grid
+    grid = Grid(
+        grid_shape=grid_shape,
+        voxel_size=voxel_size,
+        grid_origin=grid_origin,
+        bounds=bounds,
+        shape=shape,
+    )
+    return grid.time_grid(origin, direction, use_time=use_time, start_t=start_t, t_max=t_max)
