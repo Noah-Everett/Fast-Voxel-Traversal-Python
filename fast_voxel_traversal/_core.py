@@ -95,6 +95,36 @@ def _dda(o: np.ndarray, d: np.ndarray,
             tnext[k] = math.inf
             dt[k] = math.inf
 
+    # # 4) March the grid
+    # count = 0
+    # max_hits = out_ix.shape[0]
+    # while count < max_hits:
+    #     out_ix[count, 0] = ix[0]
+    #     out_ix[count, 1] = ix[1]
+    #     out_ix[count, 2] = ix[2]
+    #     out_t0[count] = t0
+
+    #     # find next boundary crossing
+    #     tmin = tnext[0]
+    #     if tnext[1] < tmin:
+    #         tmin = tnext[1]
+    #     if tnext[2] < tmin:
+    #         tmin = tnext[2]
+    #     out_t1[count] = tmin
+
+    #     count += 1
+    #     t0 = tmin
+    #     if t0 > t_exit or t0 > t_max:
+    #         break
+
+    #     # step axes that hit simultaneously
+    #     for k in range(3):
+    #         if tnext[k] == tmin:
+    #             ix[k] += step[k]
+    #             if ix[k] < 0 or ix[k] >= grid_shape[k]:
+    #                 return count
+    #             tnext[k] += dt[k]
+
     # 4) March the grid
     count = 0
     max_hits = out_ix.shape[0]
@@ -104,24 +134,31 @@ def _dda(o: np.ndarray, d: np.ndarray,
         out_ix[count, 2] = ix[2]
         out_t0[count] = t0
 
-        # find next boundary crossing
-        tmin = tnext[0]
-        if tnext[1] < tmin:
-            tmin = tnext[1]
-        if tnext[2] < tmin:
-            tmin = tnext[2]
-        out_t1[count] = tmin
+        # ---- ❶ choose NEXT boundary exactly like C++ -----------------
+        # strict-< comparisons give the same tie-breaking order:
+        #   • X wins only when strictly smallest
+        #   • Y beats X when X==Y < Z
+        #   • Z wins on any remaining ties (X==Y==Z or X<Y==Z)
+        if tnext[0] < tnext[1] and tnext[0] < tnext[2]:
+            ksel = 0        # advance X
+        elif tnext[1] < tnext[2]:
+            ksel = 1        # advance Y
+        else:
+            ksel = 2        # advance Z
+        tmin = tnext[ksel]
+        # -----------------------------------------------------------------
 
+        out_t1[count] = tmin
         count += 1
         t0 = tmin
         if t0 > t_exit or t0 > t_max:
             break
 
-        # step axes that hit simultaneously
-        for k in range(3):
-            if tnext[k] == tmin:
-                ix[k] += step[k]
-                if ix[k] < 0 or ix[k] >= grid_shape[k]:
-                    return count
-                tnext[k] += dt[k]
+        # ---- ❷ advance only the selected axis ---------------------------
+        ix[ksel] += step[ksel]
+        if ix[ksel] < 0 or ix[ksel] >= grid_shape[ksel]:
+            return count          # left the grid → finished
+        tnext[ksel] += dt[ksel]
+        # -----------------------------------------------------------------
+
     return count
